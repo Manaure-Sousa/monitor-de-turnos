@@ -1,7 +1,8 @@
 const axios = require('axios');
 const nodemailer = require('nodemailer');
 
-const CHECK_INTERVAL_MS = 30_000;
+const NIGHT_CHECK_INTERVAL_MS = 60_000;
+const DAY_CHECK_INTERVAL_MS = 10 * 60_000;
 const ERROR_RETRY_INTERVAL_MS = 60_000;
 const TARGET_URL = 'https://titulosvalidez.educacion.gob.ar/validez/detitulos/';
 const BLOCKED_URL =
@@ -44,6 +45,16 @@ function nowIso() {
 
 function wait(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function getCheckIntervalMs(currentDate = new Date()) {
+  const currentHour = currentDate.getHours();
+
+  if (currentHour >= 0 && currentHour < 7) {
+    return NIGHT_CHECK_INTERVAL_MS;
+  }
+
+  return DAY_CHECK_INTERVAL_MS;
 }
 
 async function checkAppointments() {
@@ -131,7 +142,11 @@ async function monitorLoop() {
         await notify(finalUrl);
       }
 
-      await wait(CHECK_INTERVAL_MS);
+      const nextIntervalMs = getCheckIntervalMs();
+      console.log(
+        `[${nowIso()}] Próxima verificação em ${Math.round(nextIntervalMs / 1000)} segundos.`
+      );
+      await wait(nextIntervalMs);
     } catch (error) {
       const errorMessage = error?.message || 'Erro desconhecido';
       console.error(`[${nowIso()}] Erro de rede/execução: ${errorMessage}`);

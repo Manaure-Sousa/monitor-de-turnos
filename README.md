@@ -6,7 +6,9 @@ Script em Node.js para monitorar a disponibilidade de turnos no site:
 
 ## Como funciona
 
-- Faz uma requisição HTTP GET a cada 30 segundos.
+- Faz uma requisição HTTP GET de forma flexível por horário:
+  - das 00:00 às 06:59: a cada 1 minuto;
+  - das 07:00 às 23:59: a cada 10 minutos.
 - Verifica a URL final após redirecionamentos.
 - Se a URL final for igual à URL bloqueada conhecida, não envia nada.
 - Se a URL final for diferente, envia alerta por e-mail e Telegram imediatamente.
