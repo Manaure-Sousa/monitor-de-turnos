@@ -23,13 +23,32 @@ if (missingVars.length > 0) {
   process.exit(1);
 }
 
-const {
-  EMAIL_USER,
-  EMAIL_PASS,
-  EMAIL_TO,
-  TELEGRAM_TOKEN,
-  TELEGRAM_CHAT_ID
-} = process.env;
+function sanitizeEnvValue(value) {
+  return String(value || '')
+    .replace(/\\n/g, '')
+    .trim();
+}
+
+const EMAIL_USER = sanitizeEnvValue(process.env.EMAIL_USER);
+const EMAIL_PASS = sanitizeEnvValue(process.env.EMAIL_PASS).replace(/\s+/g, '');
+const EMAIL_TO = sanitizeEnvValue(process.env.EMAIL_TO);
+const TELEGRAM_TOKEN = sanitizeEnvValue(process.env.TELEGRAM_TOKEN);
+const TELEGRAM_CHAT_ID = sanitizeEnvValue(process.env.TELEGRAM_CHAT_ID);
+
+if (!EMAIL_USER.includes('@')) {
+  console.error('[ERRO] EMAIL_USER inválido. Verifique o valor no .env.');
+  process.exit(1);
+}
+
+if (EMAIL_PASS.length < 16) {
+  console.error(
+    '[ERRO] EMAIL_PASS parece inválido. Use uma App Password do Gmail (16 caracteres, espaços serão removidos automaticamente).'
+  );
+  process.exit(1);
+}
+
+const SELF_TEST_MODE = process.argv.includes('--self-test');
+const CHECK_ONCE_MODE = process.argv.includes('--check-once');
 
 const transporter = nodemailer.createTransport({
   service: 'gmail',
@@ -128,6 +147,29 @@ async function notify(finalUrl) {
   console.log(`[${nowIso()}] Notificações enviadas (email + Telegram).`);
 }
 
+async function runSelfTest() {
+  console.log(`[${nowIso()}] Iniciando auto-teste...`);
+
+  const finalUrl = await checkAppointments();
+
+  console.log(`[${nowIso()}] Enviando notificação de teste para validar integrações.`);
+  await notify(finalUrl);
+
+  console.log(`[${nowIso()}] Auto-teste finalizado com sucesso.`);
+}
+
+async function runSingleCheck() {
+  console.log(`[${nowIso()}] Executando checagem única...`);
+  const finalUrl = await checkAppointments();
+
+  if (finalUrl !== BLOCKED_URL) {
+    console.log(`[${nowIso()}] Checagem única detectou URL diferente da bloqueada. Notificando.`);
+    await notify(finalUrl);
+  } else {
+    console.log(`[${nowIso()}] Checagem única concluída sem disponibilidade detectada.`);
+  }
+}
+
 async function monitorLoop() {
   console.log(`[${nowIso()}] Monitor de turnos iniciado.`);
 
@@ -156,7 +198,21 @@ async function monitorLoop() {
   }
 }
 
-monitorLoop().catch((error) => {
+async function bootstrap() {
+  if (SELF_TEST_MODE) {
+    await runSelfTest();
+    return;
+  }
+
+  if (CHECK_ONCE_MODE) {
+    await runSingleCheck();
+    return;
+  }
+
+  await monitorLoop();
+}
+
+bootstrap().catch((error) => {
   console.error(`[${nowIso()}] Erro fatal: ${error?.message || 'Erro desconhecido'}`);
   process.exit(1);
 });
