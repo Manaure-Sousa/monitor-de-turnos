@@ -31,6 +31,9 @@ const {
   TELEGRAM_CHAT_ID
 } = process.env;
 
+const SELF_TEST_MODE = process.argv.includes('--self-test');
+const CHECK_ONCE_MODE = process.argv.includes('--check-once');
+
 const transporter = nodemailer.createTransport({
   service: 'gmail',
   auth: {
@@ -128,6 +131,29 @@ async function notify(finalUrl) {
   console.log(`[${nowIso()}] Notificações enviadas (email + Telegram).`);
 }
 
+async function runSelfTest() {
+  console.log(`[${nowIso()}] Iniciando auto-teste...`);
+
+  const finalUrl = await checkAppointments();
+
+  console.log(`[${nowIso()}] Enviando notificação de teste para validar integrações.`);
+  await notify(finalUrl);
+
+  console.log(`[${nowIso()}] Auto-teste finalizado com sucesso.`);
+}
+
+async function runSingleCheck() {
+  console.log(`[${nowIso()}] Executando checagem única...`);
+  const finalUrl = await checkAppointments();
+
+  if (finalUrl !== BLOCKED_URL) {
+    console.log(`[${nowIso()}] Checagem única detectou URL diferente da bloqueada. Notificando.`);
+    await notify(finalUrl);
+  } else {
+    console.log(`[${nowIso()}] Checagem única concluída sem disponibilidade detectada.`);
+  }
+}
+
 async function monitorLoop() {
   console.log(`[${nowIso()}] Monitor de turnos iniciado.`);
 
@@ -156,7 +182,21 @@ async function monitorLoop() {
   }
 }
 
-monitorLoop().catch((error) => {
+async function bootstrap() {
+  if (SELF_TEST_MODE) {
+    await runSelfTest();
+    return;
+  }
+
+  if (CHECK_ONCE_MODE) {
+    await runSingleCheck();
+    return;
+  }
+
+  await monitorLoop();
+}
+
+bootstrap().catch((error) => {
   console.error(`[${nowIso()}] Erro fatal: ${error?.message || 'Erro desconhecido'}`);
   process.exit(1);
 });
