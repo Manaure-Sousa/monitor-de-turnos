@@ -85,6 +85,9 @@ Esse comando:
 - envia notificações de teste para os canais configurados (e-mail e Telegram);
 - encerra o processo ao final.
 
+No `self-test`, o script agora mostra resultado por canal (`email` e `telegram`) para facilitar diagnóstico.
+Se apenas um canal falhar, o outro continua sendo testado normalmente.
+
 > Dica: rode o `self-test` sempre que mudar variáveis do `.env` para confirmar credenciais e integrações.
 
 ### Troubleshooting: `Invalid login: 535-5.7.8 Username and Password not accepted`

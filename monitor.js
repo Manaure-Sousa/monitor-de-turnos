@@ -50,9 +50,6 @@ if (EMAIL_PASS.length < 16) {
 const SELF_TEST_MODE = process.argv.includes('--self-test');
 const CHECK_ONCE_MODE = process.argv.includes('--check-once');
 
-const SELF_TEST_MODE = process.argv.includes('--self-test');
-const CHECK_ONCE_MODE = process.argv.includes('--check-once');
-
 const transporter = nodemailer.createTransport({
   service: 'gmail',
   auth: {
@@ -113,12 +110,32 @@ async function sendEmailNotification(finalUrl) {
     `Detectado em: ${nowIso()}`
   ].join('\n');
 
-  await transporter.sendMail({
-    from: EMAIL_USER,
-    to: EMAIL_TO,
-    subject,
-    text
-  });
+  try {
+    await transporter.sendMail({
+      from: EMAIL_USER,
+      to: EMAIL_TO,
+      subject,
+      text
+    });
+  } catch (error) {
+    const errorMessage = error?.message || 'Erro desconhecido ao enviar e-mail';
+    const isGmailAuthError =
+      String(error?.responseCode || '') === '535' ||
+      errorMessage.includes('535-5.7.8') ||
+      errorMessage.includes('BadCredentials');
+
+    if (isGmailAuthError) {
+      throw new Error(
+        [
+          'Falha de autenticação do Gmail (535-5.7.8).',
+          'Verifique se o EMAIL_USER está correto e se o EMAIL_PASS é uma App Password válida (16 chars).',
+          'Se você revogou/trocou a App Password, gere uma nova no Google Account.'
+        ].join(' ')
+      );
+    }
+
+    throw error;
+  }
 }
 
 async function sendTelegramNotification(finalUrl) {
@@ -146,8 +163,60 @@ async function sendTelegramNotification(finalUrl) {
 }
 
 async function notify(finalUrl) {
-  await Promise.all([sendEmailNotification(finalUrl), sendTelegramNotification(finalUrl)]);
-  console.log(`[${nowIso()}] Notificações enviadas (email + Telegram).`);
+  const channelTasks = [
+    { name: 'email', task: sendEmailNotification(finalUrl) },
+    { name: 'telegram', task: sendTelegramNotification(finalUrl) }
+  ];
+
+  const results = await Promise.allSettled(channelTasks.map((channel) => channel.task));
+  const summary = {
+    email: false,
+    telegram: false
+  };
+
+  results.forEach((result, index) => {
+    const channelName = channelTasks[index].name;
+
+    if (result.status === 'fulfilled') {
+      summary[channelName] = true;
+      console.log(`[${nowIso()}] Notificação ${channelName} enviada com sucesso.`);
+      return;
+    }
+
+    const reasonMessage = result?.reason?.message || 'Erro desconhecido';
+    console.error(`[${nowIso()}] Falha ao enviar notificação ${channelName}: ${reasonMessage}`);
+  });
+
+  if (!summary.email && !summary.telegram) {
+    throw new Error('Falha no envio de notificações em todos os canais (email e Telegram).');
+  }
+
+  return summary;
+}
+
+async function runSelfTest() {
+  console.log(`[${nowIso()}] Iniciando auto-teste...`);
+
+  const finalUrl = await checkAppointments();
+
+  console.log(`[${nowIso()}] Enviando notificação de teste para validar integrações.`);
+  const summary = await notify(finalUrl);
+
+  console.log(
+    `[${nowIso()}] Auto-teste finalizado. Resultado => email: ${summary.email ? 'ok' : 'falhou'}, telegram: ${summary.telegram ? 'ok' : 'falhou'}.`
+  );
+}
+
+async function runSingleCheck() {
+  console.log(`[${nowIso()}] Executando checagem única...`);
+  const finalUrl = await checkAppointments();
+
+  if (finalUrl !== BLOCKED_URL) {
+    console.log(`[${nowIso()}] Checagem única detectou URL diferente da bloqueada. Notificando.`);
+    await notify(finalUrl);
+  } else {
+    console.log(`[${nowIso()}] Checagem única concluída sem disponibilidade detectada.`);
+  }
 }
 
 async function runSelfTest() {
