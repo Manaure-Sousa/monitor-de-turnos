@@ -87,6 +87,23 @@ Esse comando:
 
 > Dica: rode o `self-test` sempre que mudar variáveis do `.env` para confirmar credenciais e integrações.
 
+### Troubleshooting: `Invalid login: 535-5.7.8 Username and Password not accepted`
+
+Se esse erro aparecer no envio por e-mail:
+
+1. Confirme que `EMAIL_USER` é o Gmail completo (ex.: `seuusuario@gmail.com`).
+2. Gere uma **App Password** no Google e use em `EMAIL_PASS`.
+3. O script remove espaços automaticamente de `EMAIL_PASS`, então pode colar com ou sem espaços.
+4. Evite colar `\n` literal na mesma linha das variáveis no `.env`.
+
+Exemplo correto de `.env`:
+
+```env
+EMAIL_USER=seuusuario@gmail.com
+EMAIL_PASS=abcd efgh ijkl mnop
+EMAIL_TO=destino@gmail.com
+```
+
 ## URL bloqueada conhecida
 
 ```text
