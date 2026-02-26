@@ -50,9 +50,6 @@ if (EMAIL_PASS.length < 16) {
 const SELF_TEST_MODE = process.argv.includes('--self-test');
 const CHECK_ONCE_MODE = process.argv.includes('--check-once');
 
-const SELF_TEST_MODE = process.argv.includes('--self-test');
-const CHECK_ONCE_MODE = process.argv.includes('--check-once');
-
 const transporter = nodemailer.createTransport({
   service: 'gmail',
   auth: {
