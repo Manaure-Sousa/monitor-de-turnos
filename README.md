@@ -57,6 +57,36 @@ ou
 pnpm start
 ```
 
+## Como validar se está funcionando corretamente
+
+### 1) Validar sintaxe do script
+
+```bash
+pnpm check
+```
+
+### 2) Rodar apenas uma checagem (sem loop infinito)
+
+```bash
+pnpm check:once
+```
+
+Isso valida se a requisição para o site alvo está funcionando e mostra no log a URL final detectada.
+
+### 3) Testar notificações (e-mail + Telegram)
+
+```bash
+pnpm self-test
+```
+
+Esse comando:
+
+- faz uma checagem real do site;
+- envia notificações de teste para os canais configurados (e-mail e Telegram);
+- encerra o processo ao final.
+
+> Dica: rode o `self-test` sempre que mudar variáveis do `.env` para confirmar credenciais e integrações.
+
 ## URL bloqueada conhecida
 
 ```text
