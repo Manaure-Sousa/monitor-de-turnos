@@ -219,6 +219,29 @@ async function runSingleCheck() {
   }
 }
 
+async function runSelfTest() {
+  console.log(`[${nowIso()}] Iniciando auto-teste...`);
+
+  const finalUrl = await checkAppointments();
+
+  console.log(`[${nowIso()}] Enviando notificação de teste para validar integrações.`);
+  await notify(finalUrl);
+
+  console.log(`[${nowIso()}] Auto-teste finalizado com sucesso.`);
+}
+
+async function runSingleCheck() {
+  console.log(`[${nowIso()}] Executando checagem única...`);
+  const finalUrl = await checkAppointments();
+
+  if (finalUrl !== BLOCKED_URL) {
+    console.log(`[${nowIso()}] Checagem única detectou URL diferente da bloqueada. Notificando.`);
+    await notify(finalUrl);
+  } else {
+    console.log(`[${nowIso()}] Checagem única concluída sem disponibilidade detectada.`);
+  }
+}
+
 async function monitorLoop() {
   console.log(`[${nowIso()}] Monitor de turnos iniciado.`);
 
